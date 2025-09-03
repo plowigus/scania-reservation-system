@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Model Gościa (odpowiednik tabeli "guests")
+model Guest {
+  id      Int     @id @default(autoincrement())
+  name    String
+  surname String
+  city    String
+  seat    Seat?   @relation(fields: [seatId], references: [id])
+  seatId  Int?    @unique
+   seatConfirmed Boolean @default(false)
+  
+}
+
+// Model Stołu (odpowiednik tabeli "tables")
+model Table {
+  id        Int     @id @default(autoincrement())
+  name      String
+  capacity  Int
+  seats     Seat[]  
+}
+
+// Model Miejsca (odpowiednik tabeli "seats")
+model Seat {
+  id          Int     @id @default(autoincrement())
+  seatNumber  Int
+  isReserved  Boolean @default(false)
+  table       Table   @relation(fields: [tableId], references: [id])
+  tableId     Int
+  guest       Guest?  
+
+  @@unique([tableId, seatNumber]) 
+}

@@ -1,73 +1,82 @@
 "use client";
-import { useState } from "react";
 
-export default function SeatConfirmation() {
-  // statyczne dane gościa i miejsca
-  const guest = { name: "Jan", surname: "Kowalski" };
-  const seat = { number: 5, table: "Stół 3" };
-  const tableGuests = [
-    { name: "Anna", surname: "Nowak" },
-    { name: "Piotr", surname: "Wiśniewski" },
-  ];
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { confirmSeat } from "@/app/lib/action";
 
-  const [accepted, setAccepted] = useState(false);
+export default function SeatInfo({ guest, tables }) {
+  const router = useRouter();
+  // useTransition pozwala na płynne przejścia stanu podczas wywoływania akcji serwerowej
+  const [isPending, startTransition] = useTransition();
 
+  const assignedSeat = guest.seat;
+  const assignedTable = guest.seat?.table;
+
+  // Funkcja, która zostanie wywołana po kliknięciu "Akceptuję"
   const handleAccept = () => {
-    alert("Miejsce zostało zaakceptowane!");
-    setAccepted(true);
+    // Używamy startTransition, aby Next.js wiedział, że rozpoczynamy operację,
+    // która może chwilę potrwać (np. aktualizacja bazy danych).
+    startTransition(async () => {
+      await confirmSeat(guest.id);
+    });
   };
 
   const handleChange = () => {
-    alert("Przechodzimy do wyboru nowego miejsca...");
-    // tutaj później przekierowanie do /checkin/change lub otwarcie modal
+    router.push(`/change-seat/${guest.id}`);
   };
 
-  if (accepted) {
+  // --- GŁÓWNA ZMIANA LOGICZNA ---
+  // Jeśli gość ma już potwierdzone miejsce, pokazujemy mu tylko finalny komunikat.
+  if (guest.seatConfirmed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-green-100">
-        <h2 className="text-2xl font-bold">
-          Dziękujemy! Twoje miejsce zostało zapisane ✅
-        </h2>
+      <div className="text-center bg-white text-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-4">
+          Witaj ponownie, {guest.name}!
+        </h1>
+        <div className="mb-4 p-4 bg-green-100 rounded-lg border border-green-300">
+          <p className="text-lg text-gray-700">
+            Twoje potwierdzone miejsce to:
+          </p>
+          <p className="text-3xl font-bold text-green-800 mt-2">
+            {assignedTable?.name}, Miejsce {assignedSeat?.seatNumber}
+          </p>
+        </div>
+        <p className="mt-6 text-xl text-gray-800">Życzymy miłej zabawy! 🎉</p>
       </div>
     );
   }
 
+  // Jeśli miejsce nie jest jeszcze potwierdzone, pokazujemy opcje
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-4">
+    <div className="flex flex-col items-center justify-center w-full p-4">
+      <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md text-gray-800">
+        <h1 className="text-2xl font-bold mb-4 text-center">
           Witaj {guest.name} {guest.surname}!
         </h1>
-        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-          <p className="text-lg">
-            Twoje miejsce: <strong>{seat.number}</strong>
+
+        <div className="text-center mb-4 p-4 bg-blue-100 rounded-lg border border-blue-300">
+          <p className="text-lg text-gray-700">
+            Twoje przydzielone miejsce to:
           </p>
-          <p className="text-lg">
-            Przy stole: <strong>{seat.table}</strong>
+          <p className="text-3xl font-bold text-blue-800 mt-2">
+            {assignedTable?.name}, Miejsce {assignedSeat?.seatNumber}
           </p>
         </div>
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold mb-2">Przy stole siedzą:</h3>
-          <ul className="list-disc list-inside">
-            {tableGuests.map((g, i) => (
-              <li key={i}>
-                {g.name} {g.surname}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex gap-4 mt-4">
-          <button
-            onClick={handleChange}
-            className="flex-1 bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600"
-          >
-            Zmień miejsce
-          </button>
+
+        <div className="flex flex-col gap-4 mt-6">
           <button
             onClick={handleAccept}
-            className="flex-1 bg-green-600 text-white p-2 rounded-lg hover:bg-green-700"
+            disabled={isPending} // Przycisk jest nieaktywny podczas zapisu do bazy
+            className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 font-bold text-lg disabled:opacity-50"
           >
-            Akceptuję miejsce
+            {isPending ? "Zapisywanie..." : "Akceptuję to miejsce"}
+          </button>
+          <button
+            onClick={handleChange}
+            disabled={isPending}
+            className="w-full bg-yellow-500 text-white p-3 rounded-lg hover:bg-yellow-600 font-semibold disabled:opacity-50"
+          >
+            Chcę wybrać inne miejsce
           </button>
         </div>
       </div>
